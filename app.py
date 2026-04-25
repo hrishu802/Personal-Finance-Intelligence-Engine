@@ -10,9 +10,14 @@ from utils.preprocessing import load_and_clean_data, feature_engineering, aggreg
 from utils.recommender import generate_recommendations, ai_advisor_response, simulate_savings
 from models.predictor import ExpensePredictor, detect_anomalies
 from utils.insights import generate_smart_insights, what_changed_analysis, get_kpi_explanation
+from utils.db import init_db, load_transactions_from_db, save_budget, get_all_budgets
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="PFIE V3 - FinTech Assistant", layout="wide", page_icon="🏦", initial_sidebar_state="expanded")
+st.set_page_config(page_title="PFIE V4 - Enterprise FinTech", layout="wide", page_icon="🏦", initial_sidebar_state="expanded")
+
+# --- INITIALIZE DATABASE ---
+init_db()
+USER_ID = "USER_101" # Default user for MVP
 
 # --- CUSTOM PREMIUM CSS ---
 st.markdown("""
@@ -138,23 +143,26 @@ st.markdown("""
 # --- DATA LOADING & CACHING ---
 @st.cache_data
 def load_pfie_data():
-    if not os.path.exists('data/transactions.csv'):
+    df = load_transactions_from_db()
+    if df.empty:
         from utils.data_gen import generate_synthetic_data
-        generate_synthetic_data()
+        df = generate_synthetic_data()
         
-    df = load_and_clean_data('data/transactions.csv')
+    df['date'] = pd.to_datetime(df['date'])
     df = feature_engineering(df)
     monthly_summary = aggregate_monthly_data(df)
     return df, monthly_summary
 
 @st.cache_resource
-def get_expense_predictor_model():
+def get_advanced_predictor_model():
     return ExpensePredictor()
 
 df, monthly_summary = load_pfie_data()
-predictor = get_expense_predictor_model()
+predictor = get_advanced_predictor_model()
+
+# The advanced predictor takes the raw df
 if len(monthly_summary) >= 4:
-    predictor.train(monthly_summary)
+    predictor.train(df)
 
 # --- SESSION STATE INITIALIZATION ---
 if "chat_history" not in st.session_state:
@@ -164,10 +172,10 @@ if "chat_history" not in st.session_state:
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2855/2855661.png", width=60)
     st.title("PFIE Engine")
-    st.markdown("<p style='color:#94A3B8; font-size: 0.9em; margin-top:-15px;'>Smart Financial Assistant</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#94A3B8; font-size: 0.9em; margin-top:-15px;'>Enterprise FinTech SaaS</p>", unsafe_allow_html=True)
     
     st.markdown("### Navigation")
-    page = st.radio("", ["Overview Dashboard", "Deep Analysis", "AI Advisor & Chat", "What-If Simulator"])
+    page = st.radio("", ["Overview Dashboard", "Deep Analysis", "Budgets & Control", "AI Advisor & Chat"])
     
     st.markdown("---")
     st.markdown("### Global Settings")
@@ -272,7 +280,6 @@ if page == "Overview Dashboard":
         st.markdown('<div class="glass-card" style="border-top: 3px solid {}; padding-bottom: 5px;">'.format(risk_color), unsafe_allow_html=True)
         st.markdown('<div class="kpi-title">Risk Engine</div>', unsafe_allow_html=True)
         
-        # Risk Gauge inside the card
         fig_gauge = go.Figure(go.Indicator(
             mode = "gauge+number",
             value = risk_score,
@@ -300,28 +307,23 @@ if page == "Overview Dashboard":
     with col_v1:
         st.markdown('<h3 style="color:var(--text-main); font-size:1.2rem; margin-bottom:15px;">Spending Trend Forecast</h3>', unsafe_allow_html=True)
         
-        # Plotly chart with prediction and rolling avg
         plot_df = filtered_monthly.copy()
         fig = go.Figure()
         
-        # Identify Spikes
         mean_spend = plot_df['total_spending'].mean()
         std_spend = plot_df['total_spending'].std()
         spikes = plot_df[plot_df['total_spending'] > mean_spend + 1.5*std_spend]
         
-        # Actual Line
         fig.add_trace(go.Scatter(x=plot_df['year_month'], y=plot_df['total_spending'],
                                  mode='lines+markers', name='Actual Spend',
                                  line=dict(color='#14F1D9', width=3),
                                  marker=dict(size=8, color='#14F1D9')))
                                  
-        # Rolling Avg
         if 'spending_trend' in plot_df.columns:
             fig.add_trace(go.Scatter(x=plot_df['year_month'], y=plot_df['spending_trend'],
                                      mode='lines', name='3-Month Avg',
                                      line=dict(color='rgba(255,255,255,0.3)', width=2, dash='dash')))
                                      
-        # Annotate Spikes
         for _, row in spikes.iterrows():
             fig.add_annotation(
                 x=row['year_month'], y=row['total_spending'],
@@ -331,15 +333,13 @@ if page == "Overview Dashboard":
                 ax=-20, ay=-30
             )
                                      
-        # Prediction
         if len(monthly_summary) >= 4:
-            pred_res = predictor.predict_next_month(monthly_summary)
+            pred_res = predictor.predict_next_month(df)
             if pred_res:
                 pred_val, std_dev = pred_res
                 last_date = pd.to_datetime(plot_df['year_month'].iloc[-1])
                 next_date_str = (last_date + pd.DateOffset(months=1)).strftime('%Y-%m')
                 
-                # Vertical Forecast Start Marker
                 fig.add_vline(x=plot_df['year_month'].iloc[-1], line_width=2, line_dash="dash", line_color="#94A3B8")
                 fig.add_annotation(
                     x=plot_df['year_month'].iloc[-1], y=mean_spend,
@@ -347,14 +347,12 @@ if page == "Overview Dashboard":
                     textangle=-90, xshift=-10, font=dict(color="#94A3B8")
                 )
                 
-                # Plot prediction point
                 fig.add_trace(go.Scatter(x=[plot_df['year_month'].iloc[-1], next_date_str], 
                                          y=[plot_df['total_spending'].iloc[-1], pred_val],
                                          mode='lines+markers', name='Forecast',
                                          line=dict(color='#3B82F6', width=3, dash='dot'),
                                          marker=dict(size=10, symbol='star', color='#3B82F6')))
                                          
-                # Confidence interval bounds
                 upper_bound = pred_val + (1.96 * std_dev)
                 lower_bound = max(0, pred_val - (1.96 * std_dev))
                 
@@ -420,7 +418,6 @@ elif page == "Deep Analysis":
         st.markdown("### Weekday vs Spending Heatmap")
         
         day_spend = filtered_df.groupby(['weekday', 'category'])['amount'].sum().reset_index()
-        # Order weekdays correctly
         cats_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         day_spend['weekday'] = pd.Categorical(day_spend['weekday'], categories=cats_order, ordered=True)
         day_spend = day_spend.sort_values('weekday')
@@ -431,30 +428,11 @@ elif page == "Deep Analysis":
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
-    # MONTHLY COMPARISON CHART
-    st.markdown("### Monthly Category Comparison")
-    if len(filtered_monthly) >= 2:
-        curr_m = filtered_monthly.iloc[-1]['year_month']
-        prev_m = filtered_monthly.iloc[-2]['year_month']
-        
-        curr_data = filtered_df[filtered_df['date'].dt.to_period('M').astype(str) == curr_m]
-        prev_data = filtered_df[filtered_df['date'].dt.to_period('M').astype(str) == prev_m]
-        
-        curr_cat = curr_data.groupby('category')['amount'].sum()
-        prev_cat = prev_data.groupby('category')['amount'].sum()
-        
-        comp_df = pd.DataFrame({'Last Month': prev_cat, 'This Month': curr_cat}).fillna(0).reset_index()
-        comp_df = comp_df.melt(id_vars='category', var_name='Month', value_name='Amount')
-        
-        fig = px.bar(comp_df, x='category', y='Amount', color='Month', barmode='group',
-                     color_discrete_map={'This Month': '#14F1D9', 'Last Month': 'rgba(255, 255, 255, 0.2)'},
-                     template='plotly_dark')
-        fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig, use_container_width=True)
-        
     # WHAT CHANGED SECTION
     st.markdown("### What Changed This Month?")
     if len(filtered_monthly) >= 2:
+        curr_m = filtered_monthly.iloc[-1]['year_month']
+        prev_m = filtered_monthly.iloc[-2]['year_month']
         inc, dec = what_changed_analysis(filtered_df, curr_m, prev_m)
         
         col_c1, col_c2 = st.columns(2)
@@ -477,7 +455,92 @@ elif page == "Deep Analysis":
             else:
                 st.write("No major decreases.")
             st.markdown('</div>', unsafe_allow_html=True)
+
+# --- PAGE: BUDGETS & CONTROL ---
+elif page == "Budgets & Control":
+    st.markdown('<div class="premium-title">Budget Control Center</div>', unsafe_allow_html=True)
+    st.markdown("<p style='color:var(--text-muted);'>Define categorical limits and track real-time adherence to prevent overspending.</p>", unsafe_allow_html=True)
+    
+    recent_month_str = filtered_monthly.iloc[-1]['year_month']
+    recent_data = filtered_df[filtered_df['date'].dt.to_period('M').astype(str) == recent_month_str]
+    curr_cat_spend = recent_data.groupby('category')['amount'].sum().reset_index()
+    
+    # Load budgets
+    user_budgets = get_all_budgets(USER_ID)
+    cats = df['category'].unique().tolist()
+    
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("#### ⚙️ Set Limits")
+        with st.form("budget_form"):
+            new_budgets = {}
+            for cat in cats:
+                default_val = float(user_budgets.get(cat, 0.0))
+                # Auto-suggest historical average if 0
+                if default_val == 0.0:
+                    hist_avg = df[df['category'] == cat]['amount'].sum() / len(monthly_summary) if len(monthly_summary) > 0 else 5000
+                    default_val = round(float(hist_avg), -2)
+                
+                val = st.number_input(f"{cat} Limit (₹)", min_value=0.0, value=default_val, step=500.0, key=f"bud_{cat}")
+                new_budgets[cat] = val
+                
+            submitted = st.form_submit_button("Save Budgets")
+            if submitted:
+                for cat, limit in new_budgets.items():
+                    save_budget(USER_ID, cat, limit)
+                st.success("Budgets saved securely to SQLite DB!")
+                st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col2:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("#### 📊 Real-Time Budget vs Actual")
+        
+        bva_list = []
+        for index, row in curr_cat_spend.iterrows():
+            cat = row['category']
+            actual = row['amount']
+            budget = user_budgets.get(cat, 0)
+            if budget > 0:
+                perc = (actual / budget) * 100
+                bva_list.append({'Category': cat, 'Actual': actual, 'Budget': budget, '% Used': perc})
+                
+        if bva_list:
+            bva_df = pd.DataFrame(bva_list).sort_values('% Used', ascending=False)
             
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                y=bva_df['Category'],
+                x=bva_df['Budget'],
+                name='Budget Limit',
+                orientation='h',
+                marker=dict(color='rgba(255, 255, 255, 0.1)', line=dict(color='rgba(255, 255, 255, 0.3)', width=1))
+            ))
+            fig.add_trace(go.Bar(
+                y=bva_df['Category'],
+                x=bva_df['Actual'],
+                name='Actual Spend',
+                orientation='h',
+                marker=dict(color=np.where(bva_df['% Used'] > 100, '#EF4444', '#14F1D9'))
+            ))
+            
+            fig.update_layout(barmode='overlay', template='plotly_dark', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=0, t=10, b=0))
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Flags
+            over_budget = bva_df[bva_df['% Used'] > 100]
+            if not over_budget.empty:
+                st.markdown('<hr style="border-color: rgba(255,255,255,0.1);">', unsafe_allow_html=True)
+                st.markdown('<p style="color:#EF4444; font-weight:600;">⚠️ Overspending Alerts</p>', unsafe_allow_html=True)
+                for _, row in over_budget.iterrows():
+                    st.markdown(f"**{row['Category']}**: Exceeded budget by ₹{(row['Actual'] - row['Budget']):,.0f} ({row['% Used']:.0f}% used)")
+        else:
+            st.info("Set your budgets on the left to see the comparison.")
+            
+        st.markdown('</div>', unsafe_allow_html=True)
+
 # --- PAGE: AI ADVISOR ---
 elif page == "AI Advisor & Chat":
     st.markdown('<div class="premium-title">AI Financial Advisor</div>', unsafe_allow_html=True)
@@ -522,52 +585,3 @@ elif page == "AI Advisor & Chat":
                 <p style="font-size:0.9rem; color:var(--text-muted);">{rec['description']}</p>
             </div>
             """, unsafe_allow_html=True)
-
-# --- PAGE: WHAT-IF SIMULATOR ---
-elif page == "What-If Simulator":
-    st.markdown('<div class="premium-title">What-If Budget Simulator</div>', unsafe_allow_html=True)
-    st.markdown("<p style='color:var(--text-muted);'>Move the sliders to see the direct impact of cutting category expenses.</p>", unsafe_allow_html=True)
-    
-    recent_month_str = filtered_monthly.iloc[-1]['year_month']
-    recent_data = filtered_df[filtered_df['date'].dt.to_period('M').astype(str) == recent_month_str]
-    
-    cats = recent_data['category'].unique()
-    
-    col1, col2 = st.columns([1, 2])
-    reductions = {}
-    
-    with col1:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown("#### Adjust Target Spending")
-        for cat in cats:
-            val = st.slider(f"{cat} Reduction (%)", 0, 100, 0, key=cat)
-            if val > 0:
-                reductions[cat] = val / 100.0
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with col2:
-        orig, new_spend, savings = simulate_savings(filtered_df, reductions)
-        
-        st.markdown(f"""
-        <div class="glass-card" style="text-align:center; background: linear-gradient(135deg, rgba(20,241,217,0.1), rgba(59,130,246,0.1)); border-color:var(--accent-teal);">
-            <h3 style="color:var(--text-muted); font-size:1.1rem; text-transform:uppercase;">Projected Monthly Savings</h3>
-            <h1 style="color:var(--accent-teal); font-size:3.5rem; margin:10px 0;">+₹{savings:,.0f}</h1>
-            <p style="color:var(--text-main); font-size:1.1rem;">New Total Spend: ₹{new_spend:,.0f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if savings > 0:
-            st.balloons()
-            
-        # Visual Before/After
-        b_a_df = pd.DataFrame({
-            'State': ['Current', 'Simulated'],
-            'Spend': [orig, new_spend]
-        })
-        
-        fig = px.bar(b_a_df, x='State', y='Spend', color='State', text='Spend',
-                     color_discrete_map={'Current': '#EF4444', 'Simulated': '#10B981'},
-                     template='plotly_dark')
-        fig.update_traces(texttemplate='₹%{text:,.0f}', textposition='outside')
-        fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)

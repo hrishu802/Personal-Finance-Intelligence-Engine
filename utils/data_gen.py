@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 import random
 import os
 
-def generate_synthetic_data(num_months=12, transactions_per_month=100, output_file='data/transactions.csv'):
+from utils.db import init_db, save_transactions_to_db
+
+def generate_synthetic_data(num_months=12, transactions_per_month=100):
     np.random.seed(42)
     random.seed(42)
     
@@ -68,10 +70,10 @@ def generate_synthetic_data(num_months=12, transactions_per_month=100, output_fi
     # Sort by date
     df = df.sort_values('date').reset_index(drop=True)
     
-    # Save to CSV
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    df.to_csv(output_file, index=False)
-    print(f"Successfully generated {len(df)} transactions to {output_file}")
+    # Save to SQLite
+    init_db()
+    save_transactions_to_db(df)
+    print(f"Successfully generated {len(df)} transactions to SQLite database")
     
     return df
 
