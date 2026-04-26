@@ -5,7 +5,7 @@ def generate_smart_insights(df, monthly_summary):
     insights = []
     
     if len(monthly_summary) < 2:
-        return [{"icon": "ℹ️", "text": "Not enough data for historical insights. Keep using the app to generate trends.", "type": "neutral"}]
+        return [{"title": "Not enough data", "metric": "-", "recommendation": "Keep using the app to generate trends.", "type": "neutral"}]
         
     recent_month = monthly_summary.iloc[-1]
     prev_month = monthly_summary.iloc[-2]
@@ -16,14 +16,16 @@ def generate_smart_insights(df, monthly_summary):
     
     if perc_change > 10:
         insights.append({
-            'icon': '📈',
-            'text': f"Overall spending **increased by {abs(perc_change):.1f}%** (₹{abs(spend_diff):,.0f}). **Recommendation**: Review your discretionary categories like Dining or Entertainment to curb this upward trend.",
+            'title': '📈 Spending Spike',
+            'metric': f"↑ {abs(perc_change):.1f}%",
+            'recommendation': "Review discretionary categories like Dining or Entertainment to curb this upward trend.",
             'type': 'warning'
         })
     elif perc_change < -5:
         insights.append({
-            'icon': '📉',
-            'text': f"Great! Spending **decreased by {abs(perc_change):.1f}%** (₹{abs(spend_diff):,.0f}). **Recommendation**: Transfer this saved amount to an index fund or fixed deposit to build wealth.",
+            'title': '📉 Spending Drop',
+            'metric': f"↓ {abs(perc_change):.1f}%",
+            'recommendation': "Transfer this saved amount to an index fund or fixed deposit to build wealth.",
             'type': 'success'
         })
         
@@ -38,8 +40,9 @@ def generate_smart_insights(df, monthly_summary):
         top_perc = (top_amt / recent_month['total_spending']) * 100
         
         insights.append({
-            'icon': '📊',
-            'text': f"**{top_cat}** is your largest expense, contributing **{top_perc:.1f}%** of total expenses. **Recommendation**: Set a hard budget cap for {top_cat} next month to free up cash flow.",
+            'title': f'📊 Top Expense: {top_cat}',
+            'metric': f"{top_perc:.1f}% of total",
+            'recommendation': f"Set a hard budget cap for {top_cat} next month to free up cash flow.",
             'type': 'neutral'
         })
         
@@ -50,14 +53,16 @@ def generate_smart_insights(df, monthly_summary):
     
     if weekend_ratio > 40:
         insights.append({
-            'icon': '🎉',
-            'text': f"Weekend spending is unusually high at **{weekend_ratio:.1f}%**. **Recommendation**: Try shifting some discretionary spend to weekdays or plan low-cost weekend activities.",
+            'title': '🎉 High Weekend Spend',
+            'metric': f"{weekend_ratio:.1f}%",
+            'recommendation': "Try shifting some discretionary spend to weekdays or plan low-cost weekend activities.",
             'type': 'warning'
         })
     elif weekend_ratio < 15:
         insights.append({
-            'icon': '🛋️',
-            'text': f"Weekend spending is very low (**{weekend_ratio:.1f}%**). **Recommendation**: Keep maintaining this balanced lifestyle; it significantly improves your savings rate.",
+            'title': '🛋️ Low Weekend Spend',
+            'metric': f"{weekend_ratio:.1f}%",
+            'recommendation': "Keep maintaining this balanced lifestyle; it significantly improves your savings rate.",
             'type': 'success'
         })
         

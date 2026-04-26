@@ -98,9 +98,9 @@ def get_financial_health_score(df, assumed_income=80000):
         
     return score, breakdown
 
-def get_risk_score(df, monthly_summary, assumed_income=80000):
+def get_risk_score(df, monthly_summary, health_score, assumed_income=80000):
     if len(monthly_summary) < 2:
-        return "Low Risk", 0, {}
+        return "Low Risk", 0, []
         
     recent_month = monthly_summary.iloc[-1]['total_spending']
     prev_month = monthly_summary.iloc[-2]['total_spending']
@@ -136,6 +136,14 @@ def get_risk_score(df, monthly_summary, assumed_income=80000):
     if weekend_ratio > 0.4:
         risk_score += 25
         factors.append("High weekend spending behavior")
+        
+    # 4. Health Score Link
+    if health_score < 40:
+        risk_score += 30
+        factors.append(f"Critically low health score ({health_score}/100)")
+    elif health_score < 60:
+        risk_score += 15
+        factors.append(f"Suboptimal health score ({health_score}/100)")
         
     risk_score = min(100, risk_score)
         
