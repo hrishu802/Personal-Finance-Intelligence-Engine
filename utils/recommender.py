@@ -57,7 +57,48 @@ def generate_recommendations(df, income=80000):
         
     return recommendations
 
-def ai_advisor_response(query, df, monthly_summary):
+def calculate_savings_opportunity(df):
+    """
+    Computes potential monthly savings by identifying excess in discretionary categories.
+    """
+    df['year_month'] = df['date'].dt.to_period('M')
+    recent_month = df['year_month'].max()
+    recent_data = df[df['year_month'] == recent_month]
+    
+    opportunities = []
+    total_potential = 0
+    
+    # 1. Dining/Food (suggest 20% cut if high)
+    food = recent_data[recent_data['category'] == 'Food']['amount'].sum()
+    if food > 8000:
+        cut = food * 0.20
+        total_potential += cut
+        opportunities.append({'category': 'Dining & Food', 'amount': cut})
+        
+    # 2. Weekend Spend (suggest 15% cut if high)
+    weekend = recent_data[recent_data['is_weekend']]['amount'].sum()
+    if weekend > 10000:
+        cut = weekend * 0.15
+        total_potential += cut
+        opportunities.append({'category': 'Weekend Splurges', 'amount': cut})
+        
+    # 3. Entertainment/Misc (suggest 25% cut)
+    misc = recent_data[recent_data['category'].isin(['Entertainment', 'Miscellaneous'])]['amount'].sum()
+    if misc > 5000:
+        cut = misc * 0.25
+        total_potential += cut
+        opportunities.append({'category': 'Entertainment & Misc', 'amount': cut})
+        
+    # Calculate projected health score impact (rough estimate: +10 for every 10% of income saved)
+    # Since we don't have income here, we will just pass back the raw savings amount and let app.py format the health jump, or just return a static jump if it's high.
+    # Actually, we can just say "Potential +X points"
+    health_jump = min(35, int((total_potential / 50000) * 20)) if total_potential > 0 else 0
+    # Make it realistic
+    health_jump = max(5, health_jump) if total_potential > 2000 else 0
+        
+    return total_potential, opportunities, health_jump
+
+def ai_advisor_response(query, df, monthly_summary, health_score=None):
     query = query.lower()
     
     if "overspend" in query or "over spending" in query:
@@ -84,8 +125,18 @@ def ai_advisor_response(query, df, monthly_summary):
         top_cat = cat_summary.index[0]
         return f"Your highest spending category overall is {top_cat}. Consider setting a strict budget for this category."
         
+    elif "health" in query or "score" in query:
+        if health_score is not None:
+            if health_score < 40:
+                return f"Your health score is critical ({health_score}/100). You are severely overspending relative to your income. I strongly recommend cutting down discretionary weekend expenses immediately."
+            elif health_score < 70:
+                return f"Your health score is moderate ({health_score}/100). You have decent financial stability, but increasing your savings rate by 10% would improve your score significantly."
+            else:
+                return f"Your financial health is excellent ({health_score}/100)! You maintain a great savings ratio."
+        return "I need more data to calculate your health score."
+        
     else:
-        return "I'm a simple rule-based AI advisor. I can help answer questions about overspending, saving tips, and your top expenses. Try asking: 'Am I overspending?'"
+        return "I'm your proactive AI financial assistant. I can analyze your overspending, project savings, and review your health score. Try asking: 'How is my health score?' or 'How can I save?'"
 
 def simulate_savings(df, category_reductions):
     """

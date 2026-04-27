@@ -111,3 +111,37 @@ def what_changed_analysis(df, current_month_str, prev_month_str):
     major_decreases = comparison[comparison['Diff'] < 0].tail(3).sort_values('Diff') # Most negative first
     
     return major_increases, major_decreases
+
+def build_financial_story(df, monthly_summary, risk_label, health_score):
+    if len(monthly_summary) < 2:
+        return "Not enough data to generate a financial story."
+        
+    recent_month = monthly_summary.iloc[-1]['total_spending']
+    prev_month = monthly_summary.iloc[-2]['total_spending']
+    
+    diff = recent_month - prev_month
+    perc = (diff / prev_month) * 100 if prev_month > 0 else 0
+    
+    dir_str = "↓" if perc < 0 else "↑"
+    trend_str = f"({dir_str} {abs(perc):.1f}%)"
+    
+    # Format amount
+    val = recent_month
+    if val >= 100000:
+        amt_str = f"₹{val / 100000:.2f}L"
+    else:
+        amt_str = f"₹{val:,.0f}"
+        
+    story = f"You spent <span style='font-weight:700; color:#E2E8F0;'>{amt_str}</span> this month <span style='color:#94A3B8; font-size:0.95em;'>{trend_str}</span>. "
+    
+    if risk_label == "High Risk":
+        story += f"However, your financial risk remains <span style='color:var(--danger); font-weight:700;'>HIGH</span> due to a suboptimal health score ({health_score}/100) and excessive discretionary behavior. "
+        story += "Reducing your non-essential spending by 15% can improve your financial stability significantly."
+    elif risk_label == "Moderate Risk":
+        story += f"Your financial risk is <span style='color:var(--warning); font-weight:700;'>Moderate</span> (Health Score: {health_score}/100). "
+        story += "Keep an eye on weekend spending and try to limit sudden categorical spikes."
+    else:
+        story += f"Your financial health is <span style='color:var(--success); font-weight:700;'>Excellent</span>! You are maintaining a low-risk profile and solid savings rate. "
+        story += "Consider transferring excess surplus to investments like Index Funds or Fixed Deposits."
+        
+    return story
