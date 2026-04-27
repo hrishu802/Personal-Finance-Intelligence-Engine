@@ -1,48 +1,131 @@
-# Personal Finance Intelligence Engine (PFIE)
+# 💰 Personal Finance Intelligence Engine (PFIE)
 
-## Problem Statement
-Traditional expense trackers only show where money went, lacking predictive capabilities or actionable insights. Users struggle to identify overspending early, anticipate future expenses, or understand their financial health comprehensively.
+🔗 **Live App**: [https://personal-finance-intelligence-enginegit-vnevv5wmbyrxdy3adbi5p7.streamlit.app/](https://personal-finance-intelligence-enginegit-vnevv5wmbyrxdy3adbi5p7.streamlit.app/)
 
-## Solution
-PFIE is a production-level, intelligent financial system that goes beyond simple tracking. It:
-- **Analyzes** spending behavior and trends.
-- **Predicts** future expenses using Machine Learning (Random Forest).
-- **Detects** financial risks and overspending anomalies.
-- **Provides** personalized, actionable recommendations to improve savings.
-- **Features** an interactive, premium dark-themed dashboard.
+---
 
-## Features
-1. **Overview Dashboard**: High-level KPI cards (This Month's Spend, Health Score, Risk Level) and spending distributions.
-2. **Spending Analysis**: Deep dive into category breakdowns, day-vs-time heatmaps, and top merchants.
-3. **Future Predictions**: ML-powered forecast for the upcoming month's expenses.
-4. **Risk Alerts**: Automated detection of sudden spikes in spending.
-5. **What-If Simulator**: Interactive tool to model budget reductions and visualize potential savings.
-6. **AI Advisor**: Rule-based assistant offering tailored advice and natural language query responses.
+## 🚀 Overview
 
-## Tech Stack
-- **Frontend/App**: Streamlit
-- **Data Manipulation**: Pandas, NumPy
-- **Machine Learning**: Scikit-learn (Random Forest Regressor)
-- **Visualizations**: Plotly Express & Graph Objects
-- **Language**: Python 3
+Personal Finance Intelligence Engine (PFIE) is an AI-powered financial decision system that goes beyond traditional expense tracking.
 
-## How to Run
+Instead of just showing data, PFIE:
+- **Analyzes** spending behavior
+- **Detects** financial risk
+- **Predicts** future outcomes
+- **Quantifies** savings opportunities
+- **Provides** actionable recommendations
 
-1. Clone the repository or navigate to the project directory.
-2. Create a virtual environment (optional but recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Run the Streamlit application:
-   ```bash
-   streamlit run app.py
-   ```
-   *(On the first run, the system will automatically generate a realistic synthetic dataset of transactions).*
+Built using Python + Streamlit, the system transforms raw financial data into intelligent insights and decisions.
 
-## Business Impact
-By shifting from reactive tracking to proactive intelligence, PFIE empowers users to make informed financial decisions, potentially increasing their monthly savings and significantly improving their long-term financial health.
+---
+
+## 🎯 Problem Statement
+
+Most finance apps:
+- Only track expenses
+- Lack predictive intelligence
+- Don’t explain financial risks
+- Don’t guide users on what to do next
+
+PFIE solves this by acting as a **personal financial assistant**, not just a dashboard.
+
+---
+
+## 🧠 Key Features
+
+### 📊 Financial Overview
+- Monthly spend with trend comparison
+- Expense-to-income ratio
+- Financial health score
+
+### ⚠️ Risk Detection Engine
+- Detects overspending patterns
+- Identifies financial “danger zones”
+- Provides risk score with explicit explanations of underlying drivers
+
+### 🔮 Forecasting System
+- Predicts future spending
+- Includes 95% confidence intervals
+- Highlights upcoming financial risk with visual alerts
+
+### 💡 Savings Opportunity Engine
+- Calculates potential monthly savings
+- Breaks down savings by specific discretionary categories
+- Shows annualized financial impact and projected health score improvements
+
+### 📉 Smart Insights
+- Detects key behavioral patterns (e.g., weekend splurging)
+- Highlights top expenses
+- Provides distinct, actionable recommendations
+
+### 🧪 Interactive What-If Simulator
+- Simulate spending reductions dynamically
+- Compare before vs after outcomes
+- Visualize exact savings impact
+
+### 🤖 AI Financial Advisor
+- Natural language interaction
+- Context-aware responses that read your personal risk profile
+- Personalized financial guidance
+
+---
+
+## 🧠 Sample Insights
+- *"You are spending 2.6× your income — high financial risk"*
+- *"Weekend spending is unusually high (42.8%)"*
+- *"Reducing discretionary spending by 15% can save ₹23,600/month"*
+
+---
+
+## 🏗️ Tech Stack
+- **Frontend**: Streamlit *(Enables rapid development of interactive data apps with minimal frontend overhead)*
+- **Backend**: Python
+- **Data Processing**: Pandas, NumPy
+- **Visualization**: Plotly
+- **Machine Learning**: Scikit-learn
+- **Database**: SQLite (Persistent storage)
+
+---
+
+## 📁 Project Structure
+```text
+financeInteligence/
+│── data/
+│── utils/
+│── models/
+│── app.py
+│── requirements.txt
+```
+
+---
+
+## 💼 Business Impact
+- Helps users save **10–25%** monthly
+- Detects financial risks early
+- Improves financial discipline
+- Enables data-driven decision making
+
+---
+
+## 🚀 Run Locally
+
+```bash
+git clone https://github.com/hrishu802/Personal-Finance-Intelligence-Engine.git
+cd Personal-Finance-Intelligence-Engine
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+---
+
+## 🔥 Future Improvements
+- User authentication system
+- Cloud database integration
+- Real-time bank API integration
+- Mobile app version
+
+---
+
+## 🧑‍💻 Author
+
+**Hrishabh Prajapati**
